@@ -5,7 +5,7 @@ export async function POST(req) {
     try {
         const { resultBoc } = await req.json();
 
-        const bocBytes = base64ToBytes(result.boc);
+        const bocBytes = base64ToBytes(resultBoc);
 
         const cell = Cell.fromBoc(bocBytes)[0];
 
