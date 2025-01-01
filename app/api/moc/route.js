@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
-import { Cell, base64ToBytes, bytesToBase64 } from "ton";
+import { Cell, bytesToBase64 } from "ton";
+
+function base64ToBytes(base64) {
+    const binaryString = Buffer.from(base64, "base64").toString("binary");
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
 
 export async function POST(req) {
     try {
         const { resultBoc } = await req.json();
+        console.log("Received BOC: ", resultBoc);
 
         const bocBytes = base64ToBytes(resultBoc);
 
