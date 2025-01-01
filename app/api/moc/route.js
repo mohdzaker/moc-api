@@ -1,41 +1,36 @@
 import { NextResponse } from "next/server";
-import { Cell, bytesToBase64 } from "ton";
+import TonWeb from "tonweb";
 
-function base64ToBytes(base64) {
-    const binaryString = Buffer.from(base64, "base64").toString("binary");
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-}
+// Initialize TonWeb with the correct provider URL
+const tonweb = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC'));
 
+// Define the API handler
 export async function POST(req) {
     try {
+        // Extract resultBoc from the request body
         const { resultBoc } = await req.json();
-        console.log("Received BOC: ", resultBoc);
 
-        const bocBytes = base64ToBytes(resultBoc);
+        if (!resultBoc) {
+            return NextResponse.json({ error: "No BOC data provided" }, { status: 400 });
+        }
 
-        const cell = Cell.fromBoc(bocBytes)[0];
+        // Decode the BOC (Bag of Cells)
+        const bocBytes = TonWeb.utils.base64ToBytes(resultBoc);
+        const bocCells = await TonWeb.boc.Cell.fromBoc(bocBytes);
 
-        const bocHashBytes = cell.hash();
+        if (bocCells && bocCells.length > 0) {
+            const firstCell = bocCells[0];
+            // Get the hash of the first cell
+            const cellHash = firstCell.hash();
+            const hashBase64 = TonWeb.utils.bytesToBase64(cellHash);
 
-        const hashBase64 = bytesToBase64(bocHashBytes);
-
-        let transaction_boc = resultBoc;
-        let transaction_boc_base64_hash = hashBase64;
-
-        return NextResponse.json({
-            transaction_boc,
-            transaction_boc_base64_hash,
-        });
+            // Return the decoded hash
+            return NextResponse.json({ cellHashBase64: hashBase64 });
+        } else {
+            return NextResponse.json({ error: "No valid cells in the BOC" }, { status: 400 });
+        }
     } catch (error) {
-        console.log(error);
-        return NextResponse.json({ error: "Failed to process request" });
+        console.error("Error decoding BOC:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
-}
-
-export async function GET(req) {
-    return NextResponse.json({ status: "failed", message: "This endpoint is only for POST requests" });
 }
